@@ -2,13 +2,58 @@ from matplotlib.transforms import Bbox
 import numpy as np
 import h5py
 import pandas as pd
-import datetime
+from datetime import datetime as dt
 import warnings
 import matplotlib.pyplot as plt
 import xarray as xr
+import time
 
+# can be applied to columns of dataframes, e.g.
+# decimal_years = my_data_frame['dd-mm-yyyy'].apply(toYearDecimal)
+def toYearDecimal(date):
+    year = date.year
+    startOfThisYear = dt(year=year, month=1, day=1)
+    startOfNextYear = dt(year=year+1, month=1, day=1)
+    yearElapsed = time.mktime(date.timetuple()) - time.mktime(startOfThisYear.timetuple())
+    yearDuration = time.mktime(startOfNextYear.timetuple()) - time.mktime(startOfThisYear.timetuple())
+    decimal = yearElapsed/yearDuration
+    decimal = round(decimal,5)
+    return year + decimal
+
+# returns all values in the dataframe between the start and endyear as indicated by the dateColumn (inclusive!)
+def constrainDataFrameByYears(df, dateColumn, startyear, endyear):
+    return df[(df[dateColumn] >= dt(year=startyear, month=1, day=1)) & (df[dateColumn] < dt(year=endyear+1, month=1, day=1))]
+
+my_data_frame = pd.DataFrame()
+
+# Read jungfraujoch data and constrain to years between 2000-2018, convert dates to decimal time if necessary
 jfj_data = pd.read_csv('./SourceData/jfj_OCS_trop_VMR_DailyMeans_4Elliott.txt', header=3, delim_whitespace=True, skiprows=[4], parse_dates=['dd-mmm-yyyy'])
+jfj_data = constrainDataFrameByYears(jfj_data, 'dd-mmm-yyyy', 2000, 2018)
 
+# strip down to just ocs, cos_stdev and time
+jfj_data = pd.DataFrame({'time': jfj_data['dd-mmm-yyyy'], 'COS_JFJ' : jfj_data['ppt'], 'COS_STDEV_JFJ': jfj_data['stdev']})
+print(jfj_data)
+jfj_data.to_pickle('COS-seesaw.pkl')
+
+# Read manua load data from OCS_GCMS_flask.txt and constrain to years between 2000-2018, convert dates to decimal times
+mlo_data = pd.read_csv('./SourceData/OCS__GCMS_flask.txt', delim_whitespace=True, header=1, parse_dates=['yyyymmdd'])
+mlo_data = mlo_data.loc[mlo_data['site'] == 'mlo']
+mlo_data = constrainDataFrameByYears(mlo_data, 'yyyymmdd', 2000, 2018)
+print(mlo_data)
+
+
+result = pd.concat([mlo_data, jfj_data], join='outer')
+print(result)
+# create custom dataframe with jfj and mlo data
+#my_dataframe = pd.DataFrame({'time': constrained_jfj['dd-mmm-yyyy'], 'jfj_COS': constrained_jfj['ppt']})
+#print(my_dataframe)
+
+
+# load NOAA sst data and average / interpolate
+#ds_disk = xr.open_dataset('./SourceData/sst.day.mean.2000.nc').load()
+#print (ds_disk)
+
+'''
 after_2000 = jfj_data['dd-mmm-yyyy'] >= '2000-1-1'
 filtered_dates = jfj_data.loc[after_2000]
 error = filtered_dates['stdev']
@@ -96,3 +141,4 @@ plt.show()
 #plt.savefig('aplot.png')
 #da = ds_disk.to_array()
 #print(da.dims)
+'''
