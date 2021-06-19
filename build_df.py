@@ -1,12 +1,17 @@
-from matplotlib.transforms import Bbox
 import numpy as np
-import h5py
 import pandas as pd
 from datetime import datetime as dt
+from shapely.geometry import Point
+from shapely.geometry.polygon import Polygon
 import warnings
 import matplotlib.pyplot as plt
 import xarray as xr
 import time
+import regionmask
+import geopandas as gpd
+import warnings
+import cartopy.crs as ccrs
+
 
 # can be applied to columns of dataframes, e.g.
 # decimal_years = my_data_frame['dd-mm-yyyy'].apply(toYearDecimal)
@@ -49,9 +54,49 @@ print(result)
 #print(my_dataframe)
 
 
+# define a basic polygon
+# north_atl_temperate = Polygon([(109,48), (73, 27.5), (95, 13.6), (180, 13.6), (180, 48)])
+# atl_tropics = Polygon([(95, 13.6), (127, -17), (196, -17), (196, 13.6)])
+# south_atl_temperate = Polygon([(127,-17), (110, -45), (200,-45), (200, -17)])
+
+# names = ["ATL_north_temperate", "ATL_tropics", "ATL_south_temperate"]
+# abbrevs = ["ATL_nt", "ATL_t", "ATL_st"]
+
+# atlantic_regions = regionmask.Regions([north_atl_temperate, atl_tropics, south_atl_temperate], names=names, abbrevs=abbrevs, name="ATL")
+
+# load NOAA sst data
+noaa_2000 = xr.open_dataset('./SourceData/sst.day.mean.2000.nc').load()
+print(noaa_2000.lon)
+noaa_2000 = noaa_2000.assign_coords(lon=(((noaa_2000.lon + 180) % 360 ) - 180))
+noaa_2000 = noaa_2000.sortby(noaa_2000.lon)
+print(noaa_2000.lon)
+
+# print(noaa_2000)
+
+mask = regionmask.defined_regions.ar6.ocean.mask(noaa_2000);
+SIO_index = regionmask.defined_regions.ar6.ocean.map_keys('S.Indic-Ocean')
+print(SIO_index)
+noaa_SIO = noaa_2000.where(mask == SIO_index)
+
+noaa_SIO.sst[0].plot()
+plt.show()
+
+# noaa_atlantic.sst[0].plot()
+# plt.show()
+
+
+#print(noaa_2000.sst[0])
+#contained_in_region = noaa_2000.where(polygon.contains(sst.lon, sst.lat))
+
+#contained_in_region[0].plot()
+#plt.show()
+
+
+
 # load NOAA sst data and average / interpolate
-#ds_disk = xr.open_dataset('./SourceData/sst.day.mean.2000.nc').load()
-#print (ds_disk)
+#noaa_2000 = xr.open_dataset('./SourceData/sst.day.mean.2000.nc').load()
+#noaa_2000.sst[0].plot()
+#plt.show()
 
 '''
 after_2000 = jfj_data['dd-mmm-yyyy'] >= '2000-1-1'
