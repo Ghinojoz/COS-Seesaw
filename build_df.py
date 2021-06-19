@@ -12,7 +12,6 @@ import geopandas as gpd
 import warnings
 import cartopy.crs as ccrs
 
-
 # can be applied to columns of dataframes, e.g.
 # decimal_years = my_data_frame['dd-mm-yyyy'].apply(toYearDecimal)
 def toYearDecimal(date):
@@ -32,57 +31,49 @@ def constrainDataFrameByYears(df, dateColumn, startyear, endyear):
 my_data_frame = pd.DataFrame()
 
 # Read jungfraujoch data and constrain to years between 2000-2018, convert dates to decimal time if necessary
+print("retrieving jfj_data, and constraining to 2000-2018")
 jfj_data = pd.read_csv('./SourceData/jfj_OCS_trop_VMR_DailyMeans_4Elliott.txt', header=3, delim_whitespace=True, skiprows=[4], parse_dates=['dd-mmm-yyyy'])
 jfj_data = constrainDataFrameByYears(jfj_data, 'dd-mmm-yyyy', 2000, 2018)
+print("success")
 
 # strip down to just ocs, cos_stdev and time
 jfj_data = pd.DataFrame({'time': jfj_data['dd-mmm-yyyy'], 'COS_JFJ' : jfj_data['ppt'], 'COS_STDEV_JFJ': jfj_data['stdev']})
-print(jfj_data)
 jfj_data.to_pickle('COS-seesaw.pkl')
 
 # Read manua load data from OCS_GCMS_flask.txt and constrain to years between 2000-2018, convert dates to decimal times
+print('load mlo data and constrain to 2000-2018')
 mlo_data = pd.read_csv('./SourceData/OCS__GCMS_flask.txt', delim_whitespace=True, header=1, parse_dates=['yyyymmdd'])
 mlo_data = mlo_data.loc[mlo_data['site'] == 'mlo']
 mlo_data = constrainDataFrameByYears(mlo_data, 'yyyymmdd', 2000, 2018)
-print(mlo_data)
-
-
-result = pd.concat([mlo_data, jfj_data], join='outer')
-print(result)
-# create custom dataframe with jfj and mlo data
-#my_dataframe = pd.DataFrame({'time': constrained_jfj['dd-mmm-yyyy'], 'jfj_COS': constrained_jfj['ppt']})
-#print(my_dataframe)
-
-
-# define a basic polygon
-# north_atl_temperate = Polygon([(109,48), (73, 27.5), (95, 13.6), (180, 13.6), (180, 48)])
-# atl_tropics = Polygon([(95, 13.6), (127, -17), (196, -17), (196, 13.6)])
-# south_atl_temperate = Polygon([(127,-17), (110, -45), (200,-45), (200, -17)])
-
-# names = ["ATL_north_temperate", "ATL_tropics", "ATL_south_temperate"]
-# abbrevs = ["ATL_nt", "ATL_t", "ATL_st"]
-
-# atlantic_regions = regionmask.Regions([north_atl_temperate, atl_tropics, south_atl_temperate], names=names, abbrevs=abbrevs, name="ATL")
+print('success')
 
 # load NOAA sst data
+print('load noaa_2000 data and adjust longitude')
 noaa_2000 = xr.open_dataset('./SourceData/sst.day.mean.2000.nc').load()
-print(noaa_2000.lon)
 noaa_2000 = noaa_2000.assign_coords(lon=(((noaa_2000.lon + 180) % 360 ) - 180))
 noaa_2000 = noaa_2000.sortby(noaa_2000.lon)
-print(noaa_2000.lon)
+print('success')
 
-# print(noaa_2000)
-
+print('define regionmask for noaa_2000')
 mask = regionmask.defined_regions.ar6.ocean.mask(noaa_2000);
 SIO_index = regionmask.defined_regions.ar6.ocean.map_keys('S.Indic-Ocean')
-print(SIO_index)
 noaa_SIO = noaa_2000.where(mask == SIO_index)
 
-noaa_SIO.sst[0].plot()
+SOO_index=regionmask = regionmask.defined_regions.ar6.ocean.map_keys('Southern-Ocean')
+noaa_SOO = noaa_2000.where(mask == SOO_index)
+
+noaa_SIO.mean(dim=('lat','lon')).sst.plot.line(label='South Indic Ocean')
+noaa_SOO.mean(dim=('lat', 'lon')).sst.plot.line(label='Southern-Ocean')
+plt.legend()
 plt.show()
 
-# noaa_atlantic.sst[0].plot()
-# plt.show()
+fig = plt.figure()
+noaa_SIO.sst[0].plot()
+noaa_SOO.sst[0].plot()
+plt.show()
+
+#noaa_SIO.sst[0].plot()
+#plt.show()
 
 
 #print(noaa_2000.sst[0])
