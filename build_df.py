@@ -3,6 +3,7 @@ import pandas as pd
 from datetime import datetime as dt
 from shapely.geometry import Point
 from shapely.geometry.polygon import Polygon
+from scipy.interpolate import interp1d
 import warnings
 import matplotlib.pyplot as plt
 import xarray as xr
@@ -11,6 +12,8 @@ import regionmask
 import geopandas as gpd
 import warnings
 import cartopy.crs as ccrs
+import gc
+
 
 # can be applied to columns of dataframes, e.g.
 # decimal_years = my_data_frame['dd-mm-yyyy'].apply(toYearDecimal)
@@ -27,6 +30,14 @@ def toYearDecimal(date):
 # returns all values in the dataframe between the start and endyear as indicated by the dateColumn (inclusive!)
 def constrainDataFrameByYears(df, dateColumn, startyear, endyear):
     return df[(df[dateColumn] >= dt(year=startyear, month=1, day=1)) & (df[dateColumn] < dt(year=endyear+1, month=1, day=1))]
+
+def dostuff(data):
+    data_mean = data.mean(dim=('lat', 'lon'))
+    print('plotting')
+    fig = plt.figure()
+    data_mean.sst.plot.line(label='mean_sst_CAR')
+    plt.legend()
+    plt.show()
 
 my_data_frame = pd.DataFrame()
 
@@ -47,7 +58,75 @@ mlo_data = mlo_data.loc[mlo_data['site'] == 'mlo']
 mlo_data = constrainDataFrameByYears(mlo_data, 'yyyymmdd', 2000, 2018)
 print('success')
 
+#close it
+#del [[jfj_data, mlo_data]]
+#gc.collect()
+
 # load NOAA sst data
+#print('Begin loading Noaa sst data')
+#sst_data = xr.open_mfdataset('./SourceData/sst/*.nc', concat_dim='time')
+
+# modify the longitude
+#print('Modifying sst_data coordinates')
+#sst_data = sst_data.assign_coords(lon=(((sst_data.lon + 180) % 360) - 180))
+#sst_data = sst_data.sortby(sst_data.lon)
+#sst_mask = regionmask.defined_regions.ar6.ocean.mask(sst_data)
+
+#CAR_index = regionmask.defined_regions.ar6.ocean.map_keys('Caribbean')
+#print('Getting CAR sst')
+#CAR_sst = sst_data.where(sst_mask == CAR_index)
+#print('Getting mean')
+#dostuff(CAR_sst)
+
+noaa_2000 = xr.open_dataset('./SourceData/sst/sst.day.mean.2000.nc').load()
+noaa_200 = noaa_2000.assign_coords(lon=(((noaa_2000.lon + 180) % 360) - 180))
+noaa_2000 = noaa_2000.sortby(noaa_2000.lon)
+sst_mask = regionmask.defined_regions.ar6.ocean.mask(noaa_2000)
+CAR_index = regionmask.defined_regions.ar6.ocean.map_keys('Caribbean')
+CAR_sst = noaa_2000.where(sst_mask == CAR_index)
+data_mean = CAR_sst.mean(dim=('lat','lon'))
+fig = plt.figure()
+data_mean.sst.plot.line(label='mean sst CAR')
+
+#print(type(data_mean['time']))
+#decimalDates = data_mean['time']
+#cubic_interp = interp1d(decimalDates, data_mean['sst'], kind='cubic')
+#plt.plot(decimalDates, cubic_interp(decimalDates), '--', label='interp')
+
+interp = data_mean.sst.interp(time=list(map(str,jfj_data['time'])), method='cubic')
+
+my_data_frame = jfj_data
+my_data_frame['CAR_sst'] = np.nan
+my_data_frame.reset_index(inplace=True, drop=True)
+print(my_data_frame)
+
+interp = interp.to_dataframe()
+interp.reset_index(inplace=True, drop=True)
+#my_data_frame.join(interp, on='time')
+#my_data_frame.combine_first(interp.to_series(), axis=0)
+print('--------------------------------------------------------------------')
+#print(my_data_frame)
+interp.columns= ['CAR_sst']
+print(interp)
+#interp.plot.line('o', label='cubic')
+#interp.plot.line(label='cubic line')
+
+#plt.legend()
+#plt.show()
+
+my_data_frame.update(interp)
+print(my_data_frame)
+
+# print(type(regionmask.defined_regions.ar6.ocean))
+
+#print(regionmask.defined_regions.ar6.ocean.names)
+#for region in regionmask.defined_regions.ar6.ocean:
+#    print(region.number)
+
+
+
+
+'''
 print('load noaa_2000 data and adjust longitude')
 noaa_2000 = xr.open_dataset('./SourceData/sst.day.mean.2000.nc').load()
 noaa_2000 = noaa_2000.assign_coords(lon=(((noaa_2000.lon + 180) % 360 ) - 180))
@@ -59,7 +138,7 @@ mask = regionmask.defined_regions.ar6.ocean.mask(noaa_2000);
 SIO_index = regionmask.defined_regions.ar6.ocean.map_keys('S.Indic-Ocean')
 noaa_SIO = noaa_2000.where(mask == SIO_index)
 
-SOO_index=regionmask = regionmask.defined_regions.ar6.ocean.map_keys('Southern-Ocean')
+SOO_index= regionmask.defined_regions.ar6.ocean.map_keys('Southern-Ocean')
 noaa_SOO = noaa_2000.where(mask == SOO_index)
 
 noaa_SIO.mean(dim=('lat','lon')).sst.plot.line(label='South Indic Ocean')
@@ -71,23 +150,8 @@ fig = plt.figure()
 noaa_SIO.sst[0].plot()
 noaa_SOO.sst[0].plot()
 plt.show()
+'''
 
-#noaa_SIO.sst[0].plot()
-#plt.show()
-
-
-#print(noaa_2000.sst[0])
-#contained_in_region = noaa_2000.where(polygon.contains(sst.lon, sst.lat))
-
-#contained_in_region[0].plot()
-#plt.show()
-
-
-
-# load NOAA sst data and average / interpolate
-#noaa_2000 = xr.open_dataset('./SourceData/sst.day.mean.2000.nc').load()
-#noaa_2000.sst[0].plot()
-#plt.show()
 
 '''
 after_2000 = jfj_data['dd-mmm-yyyy'] >= '2000-1-1'
