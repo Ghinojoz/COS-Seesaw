@@ -68,7 +68,6 @@ def addSSTData(data_frame, regions, year_start, years):
     return data_frame
 
 my_data_frame = pd.DataFrame()
-
 # Read jungfraujoch data and constrain to years between 2000-2018, convert dates to decimal time if necessary
 print("retrieving jfj_data, and constraining to 2000-2018")
 jfj_data = pd.read_csv('./SourceData/jfj_OCS_trop_VMR_DailyMeans_4Elliott.txt', header=3, delim_whitespace=True, skiprows=[4], parse_dates=['dd-mmm-yyyy'])
@@ -92,9 +91,6 @@ gc.collect()
 print('--------------------------------------------------------------------')
 
 regions = regionmask.defined_regions.ar6.ocean
-print(regions.names)
-print(regions.abbrevs)
-print(regions.region_ids)
 my_data_frame = addSSTData(my_data_frame, regions, 2000, 19)
 print(my_data_frame)
 
@@ -102,6 +98,6 @@ if my_data_frame.isnull().values.any():
     total_null = my_data_frame.isnull().sum().sum()
     print('Total null values: ' + str(total_null))
 
-# remove time from dataframe
-my_data_frame.drop('time',axis=1)
+# remove time from dataframe?
+# my_data_frame.drop('time',axis=1)
 my_data_frame.to_pickle('COS_Seesaw_dataframe.pkl')
