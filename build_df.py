@@ -1,3 +1,7 @@
+'''
+Disclaimer: There are a lot of improvements that can be made to improve the performance of this script.
+it is currently quite slow, but I will be making optimizations as I learn more about xarray and working with geospatial data
+'''
 import numpy as np
 import pandas as pd
 from datetime import datetime as dt
