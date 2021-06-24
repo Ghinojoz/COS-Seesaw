@@ -34,7 +34,7 @@ def toYearDecimal(date):
 def constrainDataFrameByYears(df, dateColumn, startyear, endyear):
     return df[(df[dateColumn] >= dt(year=startyear, month=1, day=1)) & (df[dateColumn] < dt(year=endyear+1, month=1, day=1))]
 
-# mask must be a regionmask.mask function for some defined regions
+# regions must be a regions object which defines the desired regions
 def addSSTData(data_frame, regions, year_start, years):
     my_data_frame.reset_index(inplace=True, drop=True)
 
@@ -94,7 +94,14 @@ del [[jfj_data, mlo_data]]
 gc.collect()
 print('--------------------------------------------------------------------')
 
-regions = regionmask.defined_regions.ar6.ocean
+# generate our ocean regions
+north_hemisphere = np.array([[-180, 0], [-180, 90], [180, 90], [180, 0]])
+south_hemisphere = np.array([[-180, 0], [-180, -90], [180, -90], [180, 0]])
+names = ['Northern hemisphere', 'Southern hemisphere']
+abbrevs = ['NH', 'SH']
+regions = regionmask.Regions([north_hemisphere, south_hemisphere], names=names, abbrevs=abbrevs, name='Hemispheres')
+#regions = regionmask.defined_regions.ar6.ocean
+
 my_data_frame = addSSTData(my_data_frame, regions, 2000, 19)
 print(my_data_frame)
 
