@@ -36,9 +36,13 @@ def constrainDataFrameByYears(df, dateColumn, startyear, endyear):
 
 # regions must be a regions object which defines the desired regions
 def addSSTData(data_frame, regions, year_start, years):
-    my_data_frame.reset_index(inplace=True, drop=True)
-
+    # my_data_frame.reset_index(inplace=True, drop=True)
+    data_frame.reset_index(inplace=True, drop=True)
+    # sst_dict is used to store sst_mean entries for each region. Regions are the key for the dictionary
+    # each entry in the lists associated with a region key represents the sst_mean dataset for 1 year
+    sst_dict = {}
     for region in regions:
+        sst_dict[region.abbrev] = []
         column_name = region.abbrev + '_sst'
         data_frame[column_name] = np.nan
     for i in range(years):
@@ -54,21 +58,35 @@ def addSSTData(data_frame, regions, year_start, years):
             region_index = regions.map_keys(region.name)
             region_sst = noaa_data.where(sst_mask == region_index)
             sst_mean = region_sst.mean(dim=('lat', 'lon'))
-            interp = sst_mean.sst.interp(time=list(map(str, data_frame['time'])), method='cubic')
-            interp = interp.to_dataframe()
-            interp.reset_index(inplace=True, drop=True)
-            column_name = region.abbrev + '_sst'
-            interp.columns = [column_name]
-            data_frame.update(interp)
-            del[interp]
-            gc.collect()
-            print('Done interpolating for ' + region.name)
-        print('Done with all interpolating for ' + f_name)
+            sst_dict[region.abbrev].append(sst_mean)
+
         noaa_data.close()
         gc.collect()
         print('Done cleaning up after ' + f_name)
-        print('Process completed for year '+ str(2000 + i))
+        print('Year '+ str(2000 + i) + ' added successfully' )
         print('-------------------------------------------------------------------------------------')
+    # now the list of each regions' yearly mean must be combined into a single dataset
+    for region in sst_dict.keys():
+        sst_dict[region] = xr.concat(sst_dict[region], dim='time')
+        sst_dict[region].sst.plot(label=region)
+        interp = sst_dict[region].sst.interp(time=list(map(str, data_frame['time'])), method='cubic')
+        print(interp)
+        interp.to_dataframe()
+        print(interp)
+        #interp.reset_index(inplace=True, drop=True)
+        #interp.reset_index(drop=True)
+        column_name = region + '_sst'
+        label = region + '_interp'
+        #interp.rename({'sst': column_name})
+        #print(interp)
+        #interp.columns = [column_name]
+        #interp[column_name].plot.scatter(x='time', y=column_name, label=label)
+        interp.plot(label=label, marker = 'o')
+        data_frame[column_name] = interp
+
+    plt.legend()
+    plt.show()
+
     return data_frame
 
 my_data_frame = pd.DataFrame()
