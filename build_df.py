@@ -8,6 +8,7 @@ from datetime import datetime as dt
 from shapely.geometry import Point
 from shapely.geometry.polygon import Polygon
 from scipy.interpolate import interp1d
+from dateutil.relativedelta import relativedelta
 import warnings
 import matplotlib.pyplot as plt
 import xarray as xr
@@ -38,6 +39,11 @@ def constrainDataFrameByYears(df, dateColumn, startyear, endyear):
 def addSSTData(data_frame, regions, year_start, years):
     # my_data_frame.reset_index(inplace=True, drop=True)
     data_frame.reset_index(inplace=True, drop=True)
+    # generate offset date array for interpolation
+    funct = lambda x: x + relativedelta(months=-2)
+    offset_date = my_data_frame['time'].apply(funct)
+    print(offset_date)
+
     # sst_dict is used to store sst_mean entries for each region. Regions are the key for the dictionary
     # each entry in the lists associated with a region key represents the sst_mean dataset for 1 year
     sst_dict = {}
@@ -84,6 +90,15 @@ def addSSTData(data_frame, regions, year_start, years):
         interp.plot(label=label, marker = 'o')
         data_frame[column_name] = interp
 
+        # add the date offset interpolation for each region
+        column_name = column_name + '-2m'
+        interp = sst_dict[region].sst.interp(time=list(map(str, offset_date)), method='cubic')
+        print(interp)
+        #interp.to_dataframe()
+        label = label + '-2m'
+        interp.plot(label=label, marker = 's')
+        data_frame[column_name] = interp
+
     plt.legend()
     plt.show()
 
@@ -118,7 +133,7 @@ south_hemisphere = np.array([[-180, 0], [-180, -90], [180, -90], [180, 0]])
 names = ['Northern hemisphere', 'Southern hemisphere']
 abbrevs = ['NH', 'SH']
 regions = regionmask.Regions([north_hemisphere, south_hemisphere], names=names, abbrevs=abbrevs, name='Hemispheres')
-#regions = regionmask.defined_regions.ar6.ocean
+regions = regionmask.defined_regions.ar6.ocean
 
 my_data_frame = addSSTData(my_data_frame, regions, 2000, 19)
 print(my_data_frame)
@@ -129,4 +144,8 @@ if my_data_frame.isnull().values.any():
 
 # remove time from dataframe?
 # my_data_frame.drop('time',axis=1)
-my_data_frame.to_pickle('COS_Seesaw_dataframe.pkl')
+
+# drop observations where a variable value is null
+my_data_frame.dropna(inplace=True)
+print(my_data_frame)
+my_data_frame.to_pickle('COS_Seesaw_dataframe_ar6.pkl')
