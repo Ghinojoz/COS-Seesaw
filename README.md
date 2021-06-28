@@ -8,3 +8,7 @@ The first script. build_df.py, is run to generate the dataframe for ebm to work 
 
 ## Seesaw_GA2M.ipynb
 This jupyter notebook program trains and explains a GA2M implementation, specifically, it trains an explainable boosting regressor. The documentation for this machine learning model can be found here: https://github.com/interpretml/interpret . The model currently has a high RMSE, which is to be expected at this point in the project
+
+
+## Note
+The environment.yml and requirements.txt are not working properly for non-linux systems at this time. I hope to have this resolved soon.
