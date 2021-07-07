@@ -19,6 +19,20 @@ import warnings
 import cartopy.crs as ccrs
 import gc
 
+# ----------------------------------------------------------------------------------------------------------------------------------------
+# Generalization variables, modify the variables here to change targets, interpolation timelags, etc.
+
+# COS target
+# Assumes that this target can be found in the OCS__GCMS_flask.txt file
+cos_target = 'CGO'
+
+# SST timelags
+stt_delta_time = [relativedelta(months=-2), relativedelta(months=-1)]
+
+
+
+
+
 # can be applied to columns of dataframes, e.g.
 # decimal_years = my_data_frame['dd-mm-yyyy'].apply(toYearDecimal)
 def toYearDecimal(date):
