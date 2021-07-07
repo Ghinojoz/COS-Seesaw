@@ -63,6 +63,7 @@ def addSSTData(data_frame, regions, year_start, years):
     sst_dict = {}
     for region in regions:
         sst_dict[region.abbrev] = []
+        # add a column to our data frame for each region
         column_name = region.abbrev + '_sst'
         data_frame[column_name] = np.nan
     for i in range(years):
@@ -147,7 +148,8 @@ south_hemisphere = np.array([[-180, 0], [-180, -90], [180, -90], [180, 0]])
 names = ['Northern hemisphere', 'Southern hemisphere']
 abbrevs = ['NH', 'SH']
 regions = regionmask.Regions([north_hemisphere, south_hemisphere], names=names, abbrevs=abbrevs, name='Hemispheres')
-regions = regionmask.defined_regions.ar6.ocean
+
+#regions = regionmask.defined_regions.ar6.ocean
 
 my_data_frame = addSSTData(my_data_frame, regions, 2000, 19)
 print(my_data_frame)
@@ -162,4 +164,4 @@ if my_data_frame.isnull().values.any():
 # drop observations where a variable value is null
 my_data_frame.dropna(inplace=True)
 print(my_data_frame)
-my_data_frame.to_pickle('COS_Seesaw_dataframe_ar6.pkl')
+my_data_frame.to_pickle('COS_Seesaw_dataframe.pkl')
