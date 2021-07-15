@@ -216,12 +216,17 @@ def addCDOMData(data_frame, regions, start, end):
         column_name = region + '_cdom'
         data_frame[column_name] = interp
 
+        interp.plot(label=column_name)
+        
+
         # add the date offset interpolation for each offset and each region
         for delta in offset_dates:
             column_name = region + '_cdom' + delta[0]
             interp = cdom_dict[region].CDOM_a350.interp(time=list(map(str, delta[1])), method = 'cubic')
             data_frame[column_name] = interp
 
+    plt.legend()
+    plt.show()
     return data_frame
 '''
 my_data_frame = pd.DataFrame()
@@ -351,6 +356,10 @@ for region in sal_dict.keys():
 print (my_data_frame)
 sal_data.close()
 
+sal_dict['SH'].plot(label='sal_SH')
+sal_dict['NH'].plot(label='sal_NH')
+plt.legend()
+plt.show()
 
 # add MLD
 mld_data = loadnc('./SourceData/MLD_T42.nc')
@@ -368,7 +377,10 @@ for region in mld_dict.keys():
         my_data_frame.loc[my_data_frame['time'].dt.month == (i + 1), col_name] = float(mld_dict[region].variable[0][i])
 print(my_data_frame)
 mld_data.close()
-
+mld_dict['NH'].plot(label = 'mld_NH')
+mld_dict['SH'].plot(label='mld_SH')
+plt.legend()
+plt.show()
 '''
 for region in sal_dict.keys():
     sal_dict[region] = xr.concat(sal_dict[region], dim='time')
