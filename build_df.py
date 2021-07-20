@@ -216,7 +216,7 @@ def addCDOMData(data_frame, regions, start, end):
         column_name = region + '_cdom'
         data_frame[column_name] = interp
 
-        interp.plot(label=column_name)
+        # interp.plot.scatter(label=column_name)
         
 
         # add the date offset interpolation for each offset and each region
