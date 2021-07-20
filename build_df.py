@@ -79,6 +79,7 @@ def standardizeLongitude(data):
     print('Done')
     return data
 
+# returns a dictionary with the data for each region concatenated using time dimension
 def getRegionalMeans(data, regions, data_dict):
     data_mask = regions.mask(data)
     for region in regions:
@@ -88,6 +89,9 @@ def getRegionalMeans(data, regions, data_dict):
         if region.abbrev not in data_dict.keys():
             data_dict[region.abbrev] = []
         data_dict[region.abbrev].append(data_mean)
+
+    for region in data_dict.keys():
+        data_dict[region] = xr.concat(cdom_dict[region], dim='time')
     return data_dict
 
 def combineAddYearlyDataInterp(data_dict, data_frame, var_name, offset_dates=None):
@@ -228,6 +232,11 @@ def addCDOMData(data_frame, regions, start, end):
     plt.legend()
     plt.show()
     return data_frame
+
+
+
+
+
 '''
 my_data_frame = pd.DataFrame()
 # Read jungfraujoch data and constrain to years between 2000-2018, convert dates to decimal time if necessary
