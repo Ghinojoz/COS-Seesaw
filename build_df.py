@@ -206,7 +206,28 @@ def addClimatologyData(file_name, regions, data_frame, variable_name ,standardiz
     print(divider)
     return data_frame
 
+def addSSRD(data_frame, regions, start, end):
+    data_dict = {}
+    for region in regions:
+        data_dict[region.abbrev] = []
 
+    for year in range(start, end + 1):
+        f_name = './SourceData/ssrd/ssrd_' + str(year) + '_monthlymeandiurnalT42.nc'
+        print('Begin processing' + f_name)
+        data = xr.open_dataset(f_name).load()
+        print('Done loading data')
+
+        data_mask = regions.mask(data)
+        for region in regions:
+            region_index = regions.map_keys(region.name)
+            region_data = data.where(data_mask == region_index)
+            data_mean = region_data.mean(dim=('lat', 'lon'))
+            data_dict[region.abbrev].append(data_mean)
+        print(divider)
+        print(data_dict)
+        print(divider)
+
+    return data_frame
 
 # ---------------------------------------------------------------------------------------------------------------------
 # build data frame and save as pickle
@@ -222,6 +243,26 @@ offset_dates = generateOffsetDates(my_data_frame['time'], time_delta_general)
 
 # regions.plot(label='abbrev')
 # plt.show()
+
+
+# add surface solar radiation downward
+ssrd_data = addSSRD(my_data_frame, regions, year_start, year_end)
+
+
+
+
+#print(divider)
+#print(ssrd_data)
+#print(divider)
+#ssrd_2 = ssrd_data.where(ssrd_data.timeofday == 2.0, drop=True)
+#print(ssrd_2)
+#print(divider)
+#ssrd_2 = ssrd_2.squeeze('timeofday')
+#print(divider)
+#print('With time of day dropped')
+#print(ssrd_2)
+#print(divider)
+
 
 # add salinity
 my_data_frame = addClimatologyData('./SourceData/sal_T42.nc', regions, my_data_frame, '_sal')
