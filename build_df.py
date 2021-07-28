@@ -95,7 +95,7 @@ def getRegionalizedMapData(file_name_start, file_name_end, variable_name, region
             data = standardizeLongitude(data)
 
         if standardizeTime is not None:
-            data = standardizeTime_Month(data, year,standardizeTime[0], standardizeTime[1])
+            data = standardizeTime_Month(data, year, standardizeTime[0], standardizeTime[1])
 
         data_mask = regions.mask(data)
         for region in regions:
@@ -173,11 +173,32 @@ def loadCOSData(file_name, time_column_name, site_name, start, end):
     print('Building Dataframe')
     cos_data = pd.DataFrame({'time':cos_data[time_column_name], cos_column_name : cos_data['OCS_']})
 
+    cos_data = cos_data.reset_index(drop=True)
+
+    # add previous years
+    cos_data['cos_mean-1y'] = np.nan
+    previous_year_mean = None
+    for year in range (start, (end + 1)):
+        year_data = cos_data.loc[cos_data['time'].dt.year == year]
+        if previous_year_mean is not None:
+            cos_data.loc[(cos_data.time.dt.year == year), 'cos_mean-1y'] = previous_year_mean
+        previous_year_mean = year_data[cos_column_name].mean()
+        print(year)
+        print(previous_year_mean)
+
+    print(divider)
+    print(cos_data)
+    print(divider)
+    # year_data = cos_data.loc[cos_data['time'].dt.year == 2000]
+    # print(year_data)
+    # print(divider)
+    # print(year_data.mean(numeric_only=True))
+
     print(divider)
     print('Success!')
     print(divider)
 
-    return cos_data.reset_index(drop=True)
+    return cos_data
 
 def addClimatologyData(file_name, regions, data_frame, variable_name ,standardize_lon=True):
     print(divider)
@@ -206,16 +227,24 @@ def addClimatologyData(file_name, regions, data_frame, variable_name ,standardiz
     print(divider)
     return data_frame
 
-def addSSRD(data_frame, regions, start, end):
+def addSSRD(regions, start, end):
     data_dict = {}
     for region in regions:
         data_dict[region.abbrev] = []
 
     for year in range(start, end + 1):
         f_name = './SourceData/ssrd/ssrd_' + str(year) + '_monthlymeandiurnalT42.nc'
-        print('Begin processing' + f_name)
         data = xr.open_dataset(f_name).load()
-        print('Done loading data')
+        dates = []
+        for val in data['month'].values:
+            date = dt(year=year, month=int(val), day=15)
+            dates.append(date)
+        data = data.rename({'month' : 'time'})
+        data = data.assign_coords(time=dates)
+
+        # print('Begin processing' + f_name)
+        # data = xr.open_dataset(f_name).load()
+        # print('Done loading data')
 
         data_mask = regions.mask(data)
         for region in regions:
@@ -223,11 +252,16 @@ def addSSRD(data_frame, regions, start, end):
             region_data = data.where(data_mask == region_index)
             data_mean = region_data.mean(dim=('lat', 'lon'))
             data_dict[region.abbrev].append(data_mean)
+
+    for region in data_dict.keys():
+        data_dict[region] = xr.concat(data_dict[region], dim='time')
         print(divider)
-        print(data_dict)
+        print(region)
+        print(divider)
+        print(data_dict[region])
         print(divider)
 
-    return data_frame
+    return data_dict
 
 # ---------------------------------------------------------------------------------------------------------------------
 # build data frame and save as pickle
@@ -245,24 +279,28 @@ offset_dates = generateOffsetDates(my_data_frame['time'], time_delta_general)
 # plt.show()
 
 
+'''
 # add surface solar radiation downward
-ssrd_data = addSSRD(my_data_frame, regions, year_start, year_end)
+ssrd_data = addSSRD(regions, year_start, year_end)
+print(ssrd_data)
+print(divider)
+
+# print(ssrd_data['SO'].timeofday)
 
 
+for region in ssrd_data.keys():
+    print(divider)
+    print(region)
+    print(divider)
+    print(ssrd_data[region])
+    print(divider)
+    print('2.0')
+    temp_data = ssrd_data[region].isel(timeofday=2)
+    print(temp_data)
+    plt.plot(temp_data.time, temp_data.ssrd)
+    plt.show()
 
-
-#print(divider)
-#print(ssrd_data)
-#print(divider)
-#ssrd_2 = ssrd_data.where(ssrd_data.timeofday == 2.0, drop=True)
-#print(ssrd_2)
-#print(divider)
-#ssrd_2 = ssrd_2.squeeze('timeofday')
-#print(divider)
-#print('With time of day dropped')
-#print(ssrd_2)
-#print(divider)
-
+'''
 
 # add salinity
 my_data_frame = addClimatologyData('./SourceData/sal_T42.nc', regions, my_data_frame, '_sal')
