@@ -32,49 +32,126 @@ year_end = 2018
 time_delta_general = [('-15d', relativedelta(days=-15)), ('-1m', relativedelta(months=-1)), ('-1m15d', relativedelta(months=-1, days=-15)), ('-2m', relativedelta(months=-2))]
 
 def buildRegions():
+    names = []
+    abbrevs = []
+    region_list = []
+
     print(divider)
     print('Building Regionmask')
     print(divider)
+
+    # South Ocean
     south_ocean = np.array([[-180, -60], [180, -60], [180, -40], [-180, -40]])
+    names.append('South Ocean')
+    abbrevs.append('SO')
+    region_list.append(south_ocean)
+
+    # Arctic Ocean
     arctic_ocean = np.array([[-180, 40], [180, 40], [180, 60], [-180, 60]])
+    names.append('Arctic Ocean')
+    abbrevs.append('AO')
+    region_list.append(arctic_ocean)
 
     # north east pacific
     ne_pacific = np.array([[-180, 20], [-60, 20], [-60, 40], [-180, 40]])
+    names.append('North East Pacific Ocean')
+    abbrevs.append('NEP')
+    region_list.append(ne_pacific)
+
     # north west pacific
     nw_pacific = np.array([[120, 20], [180, 20], [180, 40], [120, 40]])
+    names.append('North West Pacific Ocean')
+    abbrevs.append('NWP')
+    region_list.append(nw_pacific)
+
     # equatorial north east pacific
     eqne_pacific = np.array([[-180, 0], [-60, 0], [-60, 20], [-180, 20]])
+    names.append('Equatorial North East Pacific Ocean')
+    abbrevs.append('EQNEP')
+    region_list.append(eqne_pacific)
+    
     # equatorial north west pacific
     eqnw_pacific = np.array([[120, 0], [180, 0], [180, 20], [120, 20]])
+    names.append('Equatorial North West Pacific Ocean')
+    abbrevs.append('EQNWP')
+    region_list.append(eqnw_pacific)
+
     # equatorial south east pacific
     eqse_pacific = np.array([[-180, -20], [-60, -20], [-60, 0], [-180, 0]])
+    names.append('Equatorial South East Pacific Ocean')
+    abbrevs.append('EQSEP')
+    region_list.append(eqse_pacific)
+
     # equatorial south west pacific
     eqsw_pacific = np.array([[120, -20], [180, -20], [180, 0], [120, 0]])
+    names.append('Equatorial South West Pacific Ocean')
+    abbrevs.append('EQSWP')
+    region_list.append(eqsw_pacific)
+
     # south east pacific
     se_pacific = np.array([[-180, -40], [-60, -40], [-60, -20], [-180, -20]])
+    names.append('South East Pacific Ocean')
+    abbrevs.append('SEP')
+    region_list.append(se_pacific)
+
     # south west pacific
     sw_pacific = np.array([[120, -40], [180, -40], [180, -20], [120, -20]])
+    names.append('South West Pacific Ocean')
+    abbrevs.append('SWP')
+    region_list.append(sw_pacific)
 
+    # north atlantic
     north_atlantic = np.array([[-60, 20], [20, 20], [20, 40], [-60, 40]])
+    names.append('North Atlantic Ocean')
+    abbrevs.append('NA')
+    region_list.append(north_atlantic)
+
     # equatorial north atlantic
     neq_atlantic = np.array([[-60, 0], [20, 0], [20, 20], [-60, 20]])
+    names.append('Equatorial North Atlantic Ocean')
+    abbrevs.append('EQNA')
+    region_list.append(neq_atlantic)
+
     # equatorial south atlantic
     seq_atlantic = np.array([[-60, -20], [20, -20], [20, 0], [-60, 0]])
+    names.append('Equatorial South Atlantic Ocean')
+    abbrevs.append('EQSA')
+    region_list.append(seq_atlantic)
+
+    # south atlantic
     south_atlantic = np.array([[-60, -40], [20, -40], [20, -20], [-60, -20]])
-
+    names.append('South Atlantic Ocean')
+    abbrevs.append('SA')
+    region_list.append(south_atlantic)
+    
+    # North Indian Ocean
     north_indian = np.array([[20, 0], [120, 0], [120, 20], [20, 20]])
-    # equatorial south indian
-    eqs_indian = np.array([[20, -20], [120, -20], [120, 0], [20, 0]])
+    names.append('North Indian Ocean')
+    abbrevs.append('NI')
+    region_list.append(north_indian)
+
+    # equatorial  indian
+    eq_indian = np.array([[20, -20], [120, -20], [120, 0], [20, 0]])
+    names.append('Equatorial Indian Ocean')
+    abbrevs.append('EQI')
+    region_list.append(eq_indian)
+    
+    # South Indian Ocean
     south_indian = np.array([[20, -40], [120, -40], [120, -20], [20, -20]])
+    names.append('South Indian Ocean')
+    abbrevs.append('SI')
+    region_list.append(south_indian)
 
-
+    '''
     names = ['South Ocean', 'Arctic Ocean', 'North East Pacific Ocean', 'North West Pacific Ocean', 'Equatorial North East Pacific Ocean', 'Equatorial North West Pacific Ocean', 'Equatorial South East Pacific Ocean', 'Equatorial South West Pacific Ocean', 'South East Pacific Ocean', 'South West Pacific Ocean', 'North Atlantic Ocean', 'Equatorial North Atlantic Ocean', 'Equatorial South Atlantic Ocean', 'South Atlantic Ocean', 'North Indian Ocean', 'Equatorial South Indian Ocean', 'South Indian Ocean']
     abbrevs = ['SO', 'AO', 'NEP', 'NWP', 'EQNEP', 'EQNWP', 'EQSEP', 'EQSWP', 'SEP', 'SWP', 'NA', 'EQNA', 'EQSA', 'SA', 'NI', 'EQI', 'SI']
     region_list = [south_ocean, arctic_ocean, ne_pacific, nw_pacific, eqne_pacific, eqnw_pacific, eqse_pacific, eqsw_pacific, se_pacific, sw_pacific, north_atlantic, neq_atlantic, seq_atlantic, south_atlantic, north_indian, eqs_indian, south_indian]
-
+    '''
     regions = regionmask.Regions(region_list, names=names, abbrevs=abbrevs, name='Ocean Regions')
     print('Completed')
     print(divider)
+    regions.plot(label='abbrev')
+    plt.show()
     return regions
 
 def getRegionalizedMapData(file_name_start, file_name_end, variable_name, regions, start, end, standardizeLon=True, standardizeTime=None):
@@ -270,6 +347,7 @@ def addSSRD(regions, start, end):
 my_data_frame = loadCOSData(cos_file, 'yyyymmdd', cos_site, year_start, year_end)
 
 # establish data regions
+# regions = regionmask.defined_regions.ar6.ocean
 regions = buildRegions()
 
 # get timelagged dates
