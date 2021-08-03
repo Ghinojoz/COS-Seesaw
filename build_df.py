@@ -406,5 +406,5 @@ if my_data_frame.isnull().values.any():
 
 my_data_frame.dropna(inplace=True)
 print(my_data_frame)
-my_data_frame.to_pickle('COS_Seesaw_dataframe.pkl')
+my_data_frame.to_pickle('COS_Seesaw_dataframe_' + cos_site + '.pkl')
 
