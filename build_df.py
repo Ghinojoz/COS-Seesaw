@@ -1,4 +1,3 @@
-
 import warnings
 import time
 import regionmask
@@ -14,7 +13,6 @@ from shapely.geometry import Point
 from shapely.geometry.polygon import Polygon
 from scipy.interpolate import interp1d
 from dateutil.relativedelta import relativedelta
-
 
 # generalization variables, modify variables here to change targets, interpolation timelags, etc.
 
@@ -235,7 +233,7 @@ def interpData(region_var, interp_dates):
 
 def loadCOSData(file_name, time_column_name, site_name, start, end):
     print(divider)
-    print('Load COS data for' + cos_site + ' from ' + str(start) + ' to ' + str(end))
+    print('Load COS data for' + site_name + ' from ' + str(start) + ' to ' + str(end))
     print(divider)
     
     print ('Reading file: ' + file_name)
@@ -274,7 +272,8 @@ def loadCOSData(file_name, time_column_name, site_name, start, end):
     print(divider)
     print('Success!')
     print(divider)
-
+    plt.plot(cos_data['time'], cos_data[cos_column_name])
+    plt.show()
     return cos_data
 
 def addClimatologyData(file_name, regions, data_frame, variable_name ,standardize_lon=True):
@@ -356,29 +355,11 @@ offset_dates = generateOffsetDates(my_data_frame['time'], time_delta_general)
 # regions.plot(label='abbrev')
 # plt.show()
 
-
-'''
-# add surface solar radiation downward
-ssrd_data = addSSRD(regions, year_start, year_end)
-print(ssrd_data)
-print(divider)
-
-# print(ssrd_data['SO'].timeofday)
-
-
-for region in ssrd_data.keys():
-    print(divider)
-    print(region)
-    print(divider)
-    print(ssrd_data[region])
-    print(divider)
-    print('2.0')
-    temp_data = ssrd_data[region].isel(timeofday=2)
-    print(temp_data)
-    plt.plot(temp_data.time, temp_data.ssrd)
-    plt.show()
-
-'''
+# f_name = './SourceData/DSRF/dswrf.sfc.gauss.1999.nc'
+# dswrf_data = xr.open_dataset(f_name).load()
+# dswrf_data.dswrf[0].plot()
+# plt.show()
+# print(dswrf_data)
 
 # add salinity
 my_data_frame = addClimatologyData('./SourceData/sal_T42.nc', regions, my_data_frame, '_sal')
