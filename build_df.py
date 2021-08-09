@@ -355,11 +355,24 @@ offset_dates = generateOffsetDates(my_data_frame['time'], time_delta_general)
 # regions.plot(label='abbrev')
 # plt.show()
 
-# f_name = './SourceData/DSRF/dswrf.sfc.gauss.1999.nc'
-# dswrf_data = xr.open_dataset(f_name).load()
-# dswrf_data.dswrf[0].plot()
-# plt.show()
-# print(dswrf_data)
+f_name = './SourceData/DSRF/dswrf.sfc.gauss.2008.nc'
+#dswrf_data = xr.open_dataset(f_name, decode_times=False).load()
+dswrf_data = xr.open_dataset(f_name).load()
+print(dswrf_data)
+dswrf_data.dswrf[0].plot()
+plt.show()
+'''
+dswrf_dict = getRegionalizedMapData('./SourceData/DSRF/dswrf.sfc.gauss.', '.nc', 'dswrf', regions, year_start, year_end)
+for region in dswrf_dict.keys():
+    interp = interpData(sst_dict[region.sst], my_data_frame['time'])
+    column_name = region + '_dswrf'
+    my_data_frame[column_name] = interp
+
+    for delta in offset_dates:
+        column_name = region + '_dswrf' + delta[0]
+        interp = interpData(dswrf_dict[region].dswrf, delta[1])
+        my_data_frame[column_name] = interp
+'''
 
 # add salinity
 my_data_frame = addClimatologyData('./SourceData/sal_T42.nc', regions, my_data_frame, '_sal')
@@ -373,6 +386,8 @@ for region in sst_dict.keys():
     interp = interpData(sst_dict[region].sst, my_data_frame['time'])
     column_name = region + '_sst'
     my_data_frame[column_name] = interp
+    interp.plot()
+    plt.show()
 
     for delta in offset_dates:
         column_name = region + '_sst' + delta[0]
