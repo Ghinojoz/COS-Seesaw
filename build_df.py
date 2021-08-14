@@ -19,7 +19,7 @@ from dateutil.relativedelta import relativedelta
 divider = '--------------------------------------------------------------------------------------------'
 
 # COS target, i.e. where our COS observations are obtained from
-cos_site = 'cgo'
+cos_site = 'spo'
 cos_file = './SourceData/OCS__GCMS_flask.txt'
 
 # target dates (inclusive), i.e. the time between which our data is constrained
@@ -164,7 +164,25 @@ def getRegionalizedMapData(file_name_start, file_name_end, variable_name, region
     for year in range(start, end + 1):
         f_name = file_name_start + str(year) + file_name_end
         print('Begin Processing ' + f_name)
-        data = xr.open_dataset(f_name).load()
+        data = None
+        try:
+            data = xr.open_dataset(f_name).load()
+        except:
+            print("Error opening " + f_name)
+            print("Attempting alternative datetime conversion")
+            try:
+                data = xr.open_dataset(f_name, decode_times=False).load()
+                time_since = dt(year=1800, month=1, day=1)
+                temp_time = data['time'].to_series()
+                funct = lambda x : relativedelta(hours=x)
+                time_col = temp_time.apply(funct)
+                funct2 = lambda x: time_since + x
+                data['time'] = time_col.apply(funct2)
+                print("Success!")
+            except Exception as e:
+                Print("Failed")
+                print(e)
+                exit()
         print('Done loading data')
         if standardizeLon:
             data = standardizeLongitude(data)
@@ -354,7 +372,7 @@ offset_dates = generateOffsetDates(my_data_frame['time'], time_delta_general)
 
 # regions.plot(label='abbrev')
 # plt.show()
-
+'''
 f_name = './SourceData/DSRF/dswrf.sfc.gauss.2008.nc'
 #dswrf_data = xr.open_dataset(f_name, decode_times=False).load()
 dswrf_data = xr.open_dataset(f_name, decode_times=False).load()
@@ -378,7 +396,7 @@ print(dswrf_data)
 print(divider)
 dswrf_data.dswrf[0].plot()
 plt.show()
-
+'''
 dswrf_dict = getRegionalizedMapData('./SourceData/DSRF/dswrf.sfc.gauss.', '.nc', 'dswrf', regions, year_start, year_end)
 for region in dswrf_dict.keys():
     interp = interpData(dswrf_dict[region].dswrf, my_data_frame['time'])
@@ -389,6 +407,8 @@ for region in dswrf_dict.keys():
         column_name = region + '_dswrf' + delta[0]
         interp = interpData(dswrf_dict[region].dswrf, delta[1])
         my_data_frame[column_name] = interp
+
+my_data_frame = my_data_frame.copy()
 
 # add salinity
 my_data_frame = addClimatologyData('./SourceData/sal_T42.nc', regions, my_data_frame, '_sal')
@@ -402,8 +422,8 @@ for region in sst_dict.keys():
     interp = interpData(sst_dict[region].sst, my_data_frame['time'])
     column_name = region + '_sst'
     my_data_frame[column_name] = interp
-    interp.plot()
-    plt.show()
+    #interp.plot()
+    #plt.show()
 
     for delta in offset_dates:
         column_name = region + '_sst' + delta[0]
@@ -412,6 +432,8 @@ for region in sst_dict.keys():
 
 del[[sst_dict]]
 gc.collect()
+
+my_data_frame = my_data_frame.copy()
 
 # add CDOM data
 cdom_dict = getRegionalizedMapData('./SourceData/CDOM/CDOM_a350_', '.nc', '_cdom', regions, year_start, year_end, standardizeTime=('month', 'time'))
@@ -428,6 +450,7 @@ for region in cdom_dict.keys():
 del[[cdom_dict]]
 gc.collect()
 
+my_data_frame = my_data_frame.copy()
 
 print (my_data_frame)
 
