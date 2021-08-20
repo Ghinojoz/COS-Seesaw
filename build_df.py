@@ -19,7 +19,7 @@ from dateutil.relativedelta import relativedelta
 divider = '--------------------------------------------------------------------------------------------'
 
 # COS target, i.e. where our COS observations are obtained from
-cos_site = 'spo'
+cos_site = 'smo'
 cos_file = './SourceData/OCS__GCMS_flask.txt'
 
 # target dates (inclusive), i.e. the time between which our data is constrained
@@ -361,6 +361,22 @@ def addSSRD(regions, start, end):
 # build data frame and save as pickle
 # ---------------------------------------------------------------------------------------------------------------------
 
+f_name = "./SourceData/COS-OCEAN-Lennartz-Month_2010.nc"
+ocean_dataset = xr.open_dataset(f_name).load()
+print(ocean_dataset)
+#ocean_dataset.flux[0].plot()
+#plt.show()
+
+f_name = "./SourceData/CDOM/CDOM_a350_2000.nc"
+cdom_set = xr.open_dataset(f_name).load()
+print(cdom_set)
+#cdom_set.CDOM_a350[5].plot()
+#plt.show()
+
+# f_name = "./SourceData/OCS_ocean_2000_2019_lennartzetal.nc"
+# lennartz_set = xr.open_dataset(f_name).load()
+# print(lennartz_set)
+
 my_data_frame = loadCOSData(cos_file, 'yyyymmdd', cos_site, year_start, year_end)
 
 # establish data regions
@@ -372,31 +388,36 @@ offset_dates = generateOffsetDates(my_data_frame['time'], time_delta_general)
 
 # regions.plot(label='abbrev')
 # plt.show()
-'''
-f_name = './SourceData/DSRF/dswrf.sfc.gauss.2008.nc'
-#dswrf_data = xr.open_dataset(f_name, decode_times=False).load()
-dswrf_data = xr.open_dataset(f_name, decode_times=False).load()
-print(dswrf_data)
-dswrf_data.dswrf[0].plot()
-plt.show()
-time_since = dt(year=1800, month=1, day=1)
-print(time_since)
-temp_time = dswrf_data['time'].to_series()
-print(type(temp_time))
-print(temp_time)
-funct = lambda x : relativedelta(hours=x)
-time_col = temp_time.apply(funct)
-funct2 = lambda x : time_since + x
-temp_time = time_col.apply(funct2)
-dswrf_data['time'] = temp_time
-print(divider)
-print("Ending Col")
-print(divider)
-print(dswrf_data)
-print(divider)
-dswrf_data.dswrf[0].plot()
-plt.show()
-'''
+
+# add v coordinate wind
+vwnd_dict = getRegionalizedMapData('./SourceData/VWND/vwnd.10m.gauss.', '.nc', 'vwnd', regions, year_start, year_end)
+for region in vwnd_dict.keys():
+    interp = interpData(vwnd_dict[region].vwnd, my_data_frame['time'])
+    column_name = region + '_vwnd'
+    my_data_frame[column_name] = interp
+
+    for delta in offset_dates:
+        column_name = region + '_vwnd' + delta[0]
+        interp = interpData(vwnd_dict[region].vwnd, delta[1])
+        my_data_frame[column_name] = interp
+
+my_data_frame = my_data_frame.copy()
+
+# add u coordinate wind
+uwnd_dict = getRegionalizedMapData('./SourceData/UWND/uwnd.10m.gauss.', '.nc', 'uwnd', regions, year_start, year_end)
+for region in uwnd_dict.keys():
+    interp = interpData(uwnd_dict[region].uwnd, my_data_frame['time'])
+    column_name = region + 'uwnd'
+    my_data_frame[column_name] = interp
+
+    for delta in offset_dates:
+        column_name = region + '_uwnd' + delta[0]
+        interp = interpData(uwnd_dict[region].uwnd, delta[1])
+        my_data_frame[column_name] = interp
+
+my_data_frame = my_data_frame.copy()
+
+# add downward solar radiation
 dswrf_dict = getRegionalizedMapData('./SourceData/DSRF/dswrf.sfc.gauss.', '.nc', 'dswrf', regions, year_start, year_end)
 for region in dswrf_dict.keys():
     interp = interpData(dswrf_dict[region].dswrf, my_data_frame['time'])
