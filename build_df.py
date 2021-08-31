@@ -19,139 +19,157 @@ from dateutil.relativedelta import relativedelta
 divider = '--------------------------------------------------------------------------------------------'
 
 # COS target, i.e. where our COS observations are obtained from
-cos_site = 'smo'
+# changing the value of cos_site will produce a different pickle file,
+# note that when you run GA2M in the other script, you must modify the cos_site there as well
+cos_site = 'cgo'
 cos_file = './SourceData/OCS__GCMS_flask.txt'
+
+# Use COS target specific regions? If false, will use generic regions
+# using target specific regions is not yet implemented
+use_site_regions = False
 
 # target dates (inclusive), i.e. the time between which our data is constrained
 year_start = 2000
 year_end = 2018
 
 # generalized timelags, may wish to use different values for individual data sets
+# timelags are defined as relativedelts, Note that if these time lags put us outside of the target dates
+# then some dataframe points will have null values. Rows with null values are dropped
+# currently this produces a lot of features -- number of time lags * number of regions * number of variables
+# establishing a single timelag for each region is desirable, but not yet complete
 time_delta_general = [('-15d', relativedelta(days=-15)), ('-1m', relativedelta(months=-1)), ('-1m15d', relativedelta(months=-1, days=-15)), ('-2m', relativedelta(months=-2))]
 
+
+# This function builds the regionmask regions to be used.
+# data is averaged across these regions to form features for GA2M
 def buildRegions():
-    names = []
-    abbrevs = []
-    region_list = []
+    regions = None
+    if use_site_regions:
+        print('Using regions defined for ' + cos_site)
+    else:
+        names = []
+        abbrevs = []
+        region_list = []
 
-    print(divider)
-    print('Building Regionmask')
-    print(divider)
+        print(divider)
+        print('Building Regionmask')
+        print(divider)
 
-    # South Ocean
-    south_ocean = np.array([[-180, -60], [180, -60], [180, -40], [-180, -40]])
-    names.append('South Ocean')
-    abbrevs.append('SO')
-    region_list.append(south_ocean)
+        # South Ocean
+        south_ocean = np.array([[-180, -60], [180, -60], [180, -40], [-180, -40]])
+        names.append('South Ocean')
+        abbrevs.append('SO')
+        region_list.append(south_ocean)
 
-    # Arctic Ocean
-    arctic_ocean = np.array([[-180, 40], [180, 40], [180, 60], [-180, 60]])
-    names.append('Arctic Ocean')
-    abbrevs.append('AO')
-    region_list.append(arctic_ocean)
+        # Arctic Ocean
+        arctic_ocean = np.array([[-180, 40], [180, 40], [180, 60], [-180, 60]])
+        names.append('Arctic Ocean')
+        abbrevs.append('AO')
+        region_list.append(arctic_ocean)
 
-    # north east pacific
-    ne_pacific = np.array([[-180, 20], [-60, 20], [-60, 40], [-180, 40]])
-    names.append('North East Pacific Ocean')
-    abbrevs.append('NEP')
-    region_list.append(ne_pacific)
+        # north east pacific
+        ne_pacific = np.array([[-180, 20], [-60, 20], [-60, 40], [-180, 40]])
+        names.append('North East Pacific Ocean')
+        abbrevs.append('NEP')
+        region_list.append(ne_pacific)
 
-    # north west pacific
-    nw_pacific = np.array([[120, 20], [180, 20], [180, 40], [120, 40]])
-    names.append('North West Pacific Ocean')
-    abbrevs.append('NWP')
-    region_list.append(nw_pacific)
+        # north west pacific
+        nw_pacific = np.array([[120, 20], [180, 20], [180, 40], [120, 40]])
+        names.append('North West Pacific Ocean')
+        abbrevs.append('NWP')
+        region_list.append(nw_pacific)
 
-    # equatorial north east pacific
-    eqne_pacific = np.array([[-180, 0], [-60, 0], [-60, 20], [-180, 20]])
-    names.append('Equatorial North East Pacific Ocean')
-    abbrevs.append('EQNEP')
-    region_list.append(eqne_pacific)
+        # equatorial north east pacific
+        eqne_pacific = np.array([[-180, 0], [-60, 0], [-60, 20], [-180, 20]])
+        names.append('Equatorial North East Pacific Ocean')
+        abbrevs.append('EQNEP')
+        region_list.append(eqne_pacific)
     
-    # equatorial north west pacific
-    eqnw_pacific = np.array([[120, 0], [180, 0], [180, 20], [120, 20]])
-    names.append('Equatorial North West Pacific Ocean')
-    abbrevs.append('EQNWP')
-    region_list.append(eqnw_pacific)
+        # equatorial north west pacific
+        eqnw_pacific = np.array([[120, 0], [180, 0], [180, 20], [120, 20]])
+        names.append('Equatorial North West Pacific Ocean')
+        abbrevs.append('EQNWP')
+        region_list.append(eqnw_pacific)
 
-    # equatorial south east pacific
-    eqse_pacific = np.array([[-180, -20], [-60, -20], [-60, 0], [-180, 0]])
-    names.append('Equatorial South East Pacific Ocean')
-    abbrevs.append('EQSEP')
-    region_list.append(eqse_pacific)
+        # equatorial south east pacific
+        eqse_pacific = np.array([[-180, -20], [-60, -20], [-60, 0], [-180, 0]])
+        names.append('Equatorial South East Pacific Ocean')
+        abbrevs.append('EQSEP')
+        region_list.append(eqse_pacific)
 
-    # equatorial south west pacific
-    eqsw_pacific = np.array([[120, -20], [180, -20], [180, 0], [120, 0]])
-    names.append('Equatorial South West Pacific Ocean')
-    abbrevs.append('EQSWP')
-    region_list.append(eqsw_pacific)
+        # equatorial south west pacific
+        eqsw_pacific = np.array([[120, -20], [180, -20], [180, 0], [120, 0]])
+        names.append('Equatorial South West Pacific Ocean')
+        abbrevs.append('EQSWP')
+        region_list.append(eqsw_pacific)
 
-    # south east pacific
-    se_pacific = np.array([[-180, -40], [-60, -40], [-60, -20], [-180, -20]])
-    names.append('South East Pacific Ocean')
-    abbrevs.append('SEP')
-    region_list.append(se_pacific)
+        # south east pacific
+        se_pacific = np.array([[-180, -40], [-60, -40], [-60, -20], [-180, -20]])
+        names.append('South East Pacific Ocean')
+        abbrevs.append('SEP')
+        region_list.append(se_pacific)
 
-    # south west pacific
-    sw_pacific = np.array([[120, -40], [180, -40], [180, -20], [120, -20]])
-    names.append('South West Pacific Ocean')
-    abbrevs.append('SWP')
-    region_list.append(sw_pacific)
+        # south west pacific
+        sw_pacific = np.array([[120, -40], [180, -40], [180, -20], [120, -20]])
+        names.append('South West Pacific Ocean')
+        abbrevs.append('SWP')
+        region_list.append(sw_pacific)
 
-    # north atlantic
-    north_atlantic = np.array([[-60, 20], [20, 20], [20, 40], [-60, 40]])
-    names.append('North Atlantic Ocean')
-    abbrevs.append('NA')
-    region_list.append(north_atlantic)
+        # north atlantic
+        north_atlantic = np.array([[-60, 20], [20, 20], [20, 40], [-60, 40]])
+        names.append('North Atlantic Ocean')
+        abbrevs.append('NA')
+        region_list.append(north_atlantic)
 
-    # equatorial north atlantic
-    neq_atlantic = np.array([[-60, 0], [20, 0], [20, 20], [-60, 20]])
-    names.append('Equatorial North Atlantic Ocean')
-    abbrevs.append('EQNA')
-    region_list.append(neq_atlantic)
+        # equatorial north atlantic
+        neq_atlantic = np.array([[-60, 0], [20, 0], [20, 20], [-60, 20]])
+        names.append('Equatorial North Atlantic Ocean')
+        abbrevs.append('EQNA')
+        region_list.append(neq_atlantic)
 
-    # equatorial south atlantic
-    seq_atlantic = np.array([[-60, -20], [20, -20], [20, 0], [-60, 0]])
-    names.append('Equatorial South Atlantic Ocean')
-    abbrevs.append('EQSA')
-    region_list.append(seq_atlantic)
+        # equatorial south atlantic
+        seq_atlantic = np.array([[-60, -20], [20, -20], [20, 0], [-60, 0]])
+        names.append('Equatorial South Atlantic Ocean')
+        abbrevs.append('EQSA')
+        region_list.append(seq_atlantic)
 
-    # south atlantic
-    south_atlantic = np.array([[-60, -40], [20, -40], [20, -20], [-60, -20]])
-    names.append('South Atlantic Ocean')
-    abbrevs.append('SA')
-    region_list.append(south_atlantic)
+        # south atlantic
+        south_atlantic = np.array([[-60, -40], [20, -40], [20, -20], [-60, -20]])
+        names.append('South Atlantic Ocean')
+        abbrevs.append('SA')
+        region_list.append(south_atlantic)
     
-    # North Indian Ocean
-    north_indian = np.array([[20, 0], [120, 0], [120, 20], [20, 20]])
-    names.append('North Indian Ocean')
-    abbrevs.append('NI')
-    region_list.append(north_indian)
+        # North Indian Ocean
+        north_indian = np.array([[20, 0], [120, 0], [120, 20], [20, 20]])
+        names.append('North Indian Ocean')
+        abbrevs.append('NI')
+        region_list.append(north_indian)
 
-    # equatorial  indian
-    eq_indian = np.array([[20, -20], [120, -20], [120, 0], [20, 0]])
-    names.append('Equatorial Indian Ocean')
-    abbrevs.append('EQI')
-    region_list.append(eq_indian)
+        # equatorial  indian
+        eq_indian = np.array([[20, -20], [120, -20], [120, 0], [20, 0]])
+        names.append('Equatorial Indian Ocean')
+        abbrevs.append('EQI')
+        region_list.append(eq_indian)
     
-    # South Indian Ocean
-    south_indian = np.array([[20, -40], [120, -40], [120, -20], [20, -20]])
-    names.append('South Indian Ocean')
-    abbrevs.append('SI')
-    region_list.append(south_indian)
+        # South Indian Ocean
+        south_indian = np.array([[20, -40], [120, -40], [120, -20], [20, -20]])
+        names.append('South Indian Ocean')
+        abbrevs.append('SI')
+        region_list.append(south_indian)
 
-    '''
-    names = ['South Ocean', 'Arctic Ocean', 'North East Pacific Ocean', 'North West Pacific Ocean', 'Equatorial North East Pacific Ocean', 'Equatorial North West Pacific Ocean', 'Equatorial South East Pacific Ocean', 'Equatorial South West Pacific Ocean', 'South East Pacific Ocean', 'South West Pacific Ocean', 'North Atlantic Ocean', 'Equatorial North Atlantic Ocean', 'Equatorial South Atlantic Ocean', 'South Atlantic Ocean', 'North Indian Ocean', 'Equatorial South Indian Ocean', 'South Indian Ocean']
-    abbrevs = ['SO', 'AO', 'NEP', 'NWP', 'EQNEP', 'EQNWP', 'EQSEP', 'EQSWP', 'SEP', 'SWP', 'NA', 'EQNA', 'EQSA', 'SA', 'NI', 'EQI', 'SI']
-    region_list = [south_ocean, arctic_ocean, ne_pacific, nw_pacific, eqne_pacific, eqnw_pacific, eqse_pacific, eqsw_pacific, se_pacific, sw_pacific, north_atlantic, neq_atlantic, seq_atlantic, south_atlantic, north_indian, eqs_indian, south_indian]
-    '''
-    regions = regionmask.Regions(region_list, names=names, abbrevs=abbrevs, name='Ocean Regions')
-    print('Completed')
-    print(divider)
-    regions.plot(label='abbrev')
-    plt.show()
+        regions = regionmask.Regions(region_list, names=names, abbrevs=abbrevs, name='Ocean Regions')
+        print('Completed')
+        print(divider)
+        regions.plot(label='abbrev')
+        plt.show()
+
     return regions
 
+# used to produce features from geospatial data that is averaged across the provided regions
+# file_name_start and file_name_end should be strings which form the beginning and end of the filename, with a space in between 
+# being defined by the current year being operated on.
+# standardizeLon should be true if the source data uses 0-360 longitude values, as the regionmask uses -180 - 180
+ 
 def getRegionalizedMapData(file_name_start, file_name_end, variable_name, regions, start, end, standardizeLon=True, standardizeTime=None):
     print(divider)
     print('Begin adding data for ' + variable_name)
@@ -258,14 +276,99 @@ def loadCOSData(file_name, time_column_name, site_name, start, end):
     cos_data = pd.read_csv(file_name, delim_whitespace=True, header=1, parse_dates=[time_column_name])
     cos_data = cos_data.loc[cos_data['site'] == site_name]
     
+    # use average of same day observations
+    duplicates = cos_data.duplicated(keep=False, subset=[time_column_name])
+    duplicate_entries = cos_data.where(duplicates)
+    duplicate_entries.dropna(inplace=True)
+    unique_dates = duplicate_entries[time_column_name].unique()
+    same_day_avg = []
+    for date in unique_dates:
+        entry_subset = duplicate_entries.where(duplicate_entries[time_column_name] == date)
+        entry_subset.dropna(inplace=True)
+        ocs_col = entry_subset['OCS_']
+        print("OCS COL:")
+        print(ocs_col)
+        print("MEAN: ")
+        mean = ocs_col.mean()
+        print(str(mean))
+        #print(date)
+        #print(str(mean))
+        same_day_avg.append((date, mean))
+
+    cos_data = cos_data.drop_duplicates(subset=[time_column_name])
+
+    print(cos_data)
+    for avg in same_day_avg:
+        cos_data.loc[cos_data[time_column_name] == avg[0], 'OCS_'] = avg[1]
+    print("Average replaced:")
+    print(cos_data)
+
+    # this section may be commented out later, it was used simply to plot the relationship between wind direction and
+    # OCS measurement variation for same day observations
+    '''
+    duplicates = cos_data.duplicated(keep=False, subset=[time_column_name])
+    duplicate_entries = cos_data.where(duplicates)
+    duplicate_entries.dropna(inplace=True)
+    print(duplicate_entries)
+    print(duplicate_entries.count())
+    unique_dates = duplicate_entries[time_column_name].unique()
+    wind_difference = []
+    cos_difference = []
+    for date in unique_dates:
+        print(divider)
+        print(date)
+        entry_subset = duplicate_entries.where(duplicate_entries[time_column_name] == date)
+        entry_subset.dropna(inplace=True)
+        wind_col = entry_subset['wind_dir']
+        ocs_col = entry_subset['OCS_']
+        wind_col = wind_col.astype(float)
+        ocs_col = ocs_col.astype(float)
+        wind_col = wind_col.tolist()
+        ocs_col = ocs_col.tolist()
+        if ((wind_col[0] <= 0) or (wind_col[1] <= 0)):
+            continue
+        elif ((wind_col[0] >= 360) or (wind_col[1] >= 360)):
+            continue
+
+        ocs_delta = abs(ocs_col[0] - ocs_col[1])
+        wind_delta = abs(wind_col[0] - wind_col[1])
+        if(wind_delta >= 100):
+            continue
+        print(ocs_delta)
+        print(wind_delta)
+        wind_difference.append(wind_delta)
+        cos_difference.append(ocs_delta)
+
+    print(divider)
+    print("Wind difference: ")
+    print(wind_difference)
+    print(divider)
+    print("OCS difference: ")
+    print(cos_difference)
+    print(divider)
+    fig, ax = plt.subplots(figsize=(16,8))
+    ax.scatter(wind_difference, cos_difference)
+    ax.set_xlabel("Wind Delta")
+    ax.set_ylabel("OCS Delta")
+    ax.set_title('Same Day Measurements -- Wind Delta vs. OCS Delta')
+    #plt.scatter(wind_difference, cos_difference)
+    plt.show()
+    
+    # print(divider)
+    # print('Unique Dates')
+    # print(divider)
+    # print(unique_dates)
+    # print(divider)
+    '''
+    # end wind_delta vs ocs_delta calculations + plot
+
     print('Constraining between ' + str(start) + ' - ' + str(end))
     cos_data = cos_data[(cos_data[time_column_name] >= dt(year=start, month=1, day=1)) & (cos_data[time_column_name] < dt(year=end+1, month=1, day=1))]
     # strip to COS and return dataframe
     cos_column_name = 'COS_' + site_name
     
     print('Building Dataframe')
-    cos_data = pd.DataFrame({'time':cos_data[time_column_name], cos_column_name : cos_data['OCS_']})
-
+    cos_data = pd.DataFrame({'time':cos_data[time_column_name], cos_column_name : cos_data['OCS_'], 'OCS_stddev' : cos_data['OCS__sd']})
     cos_data = cos_data.reset_index(drop=True)
 
     # add previous years
