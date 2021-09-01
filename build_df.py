@@ -24,7 +24,7 @@ divider = '---------------------------------------------------------------------
 # COS target, i.e. where our COS observations are obtained from
 # changing the value of cos_site will produce a different pickle file,
 # note that when you run GA2M in the other script, you must modify the cos_site there as well
-cos_site = 'smo'
+cos_site = 'mlo'
 cos_file = './SourceData/OCS__GCMS_flask.txt'
 
 # path for saving some plots
