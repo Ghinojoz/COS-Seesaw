@@ -1,3 +1,4 @@
+import os
 import warnings
 import time
 import regionmask
@@ -14,15 +15,25 @@ from shapely.geometry.polygon import Polygon
 from scipy.interpolate import interp1d
 from dateutil.relativedelta import relativedelta
 
-# generalization variables, modify variables here to change targets, interpolation timelags, etc.
 
+# convenience variable for console output formatting
 divider = '--------------------------------------------------------------------------------------------'
+
+# Generalization variables, modify variables here to change targets, interpolation timelags, etc.
 
 # COS target, i.e. where our COS observations are obtained from
 # changing the value of cos_site will produce a different pickle file,
 # note that when you run GA2M in the other script, you must modify the cos_site there as well
-cos_site = 'cgo'
+cos_site = 'smo'
 cos_file = './SourceData/OCS__GCMS_flask.txt'
+
+# path for saving some plots
+results_path = './Results/' + cos_site + '_Results'
+if not os.path.isdir('./Results'):
+    os.mkdir('./Results')
+
+if not os.path.isdir(results_path):
+    os.mkdir(results_path)
 
 # Use COS target specific regions? If false, will use generic regions
 # using target specific regions is not yet implemented
@@ -32,20 +43,25 @@ use_site_regions = False
 year_start = 2000
 year_end = 2018
 
-# generalized timelags, may wish to use different values for individual data sets
-# timelags are defined as relativedelts, Note that if these time lags put us outside of the target dates
-# then some dataframe points will have null values. Rows with null values are dropped
-# currently this produces a lot of features -- number of time lags * number of regions * number of variables
-# establishing a single timelag for each region is desirable, but not yet complete
+'''
+Generalized timelags, we may wish to use different values for individual data sets
+timelags are defined as relativedeltas, Note that if these time lags put us outside of the target dates
+then some dataframe points will have null values. Rows with null values are dropped immediately prior to saving the
+dataframe as a pickle file.
+Currently this method produces a lot of features -- number of time lags * number of regions * number of variables
+establishing a single timelag for each region, relative to the OCS target site, is desirable, but not yet complete.
+'''
 time_delta_general = [('-15d', relativedelta(days=-15)), ('-1m', relativedelta(months=-1)), ('-1m15d', relativedelta(months=-1, days=-15)), ('-2m', relativedelta(months=-2))]
-
 
 # This function builds the regionmask regions to be used.
 # data is averaged across these regions to form features for GA2M
 def buildRegions():
     regions = None
     if use_site_regions:
-        print('Using regions defined for ' + cos_site)
+        print('Using regions defined for ' + cos_site + ' is not yet implemented')
+        print('Please modify the build_df.py file and set use_site_regions = False')
+        print('Aborting')
+        exit()
     else:
         names = []
         abbrevs = []
@@ -160,16 +176,17 @@ def buildRegions():
         regions = regionmask.Regions(region_list, names=names, abbrevs=abbrevs, name='Ocean Regions')
         print('Completed')
         print(divider)
-        regions.plot(label='abbrev')
-        plt.show()
+        #regions.plot(label='abbrev')
+        #plt.show()
 
     return regions
 
 # used to produce features from geospatial data that is averaged across the provided regions
 # file_name_start and file_name_end should be strings which form the beginning and end of the filename, with a space in between 
 # being defined by the current year being operated on.
-# standardizeLon should be true if the source data uses 0-360 longitude values, as the regionmask uses -180 - 180
- 
+# standardizeLon should be true if the source data uses 0 to 360 longitude values, as the regionmask uses -180 to 180
+# if standardizeTime is provided, will add yearly data to monthly data, standardizeTime should be a tuple with the name of the
+# starting time column followed by the name of the desired time column
 def getRegionalizedMapData(file_name_start, file_name_end, variable_name, regions, start, end, standardizeLon=True, standardizeTime=None):
     print(divider)
     print('Begin adding data for ' + variable_name)
@@ -183,6 +200,9 @@ def getRegionalizedMapData(file_name_start, file_name_end, variable_name, region
         f_name = file_name_start + str(year) + file_name_end
         print('Begin Processing ' + f_name)
         data = None
+        # Some of the downward solar radiation data used a date time format that
+        # xarray did not like, this attempts to manually convert it, but may need to be
+        # adjusted for future issues
         try:
             data = xr.open_dataset(f_name).load()
         except:
@@ -202,12 +222,14 @@ def getRegionalizedMapData(file_name_start, file_name_end, variable_name, region
                 print(e)
                 exit()
         print('Done loading data')
+        # If necessary, convert 0 to 360 to -180 to 180
         if standardizeLon:
             data = standardizeLongitude(data)
 
         if standardizeTime is not None:
             data = standardizeTime_Month(data, year, standardizeTime[0], standardizeTime[1])
 
+        # get the mean for each region
         data_mask = regions.mask(data)
         for region in regions:
             region_index = regions.map_keys(region.name)
@@ -230,6 +252,8 @@ def getRegionalizedMapData(file_name_start, file_name_end, variable_name, region
     print(divider)
     return data_dict
 
+# modifies date_coord, which should be the time column fromt he OCS observations by delta_t, a set of 
+# timelags labeled and defined as above -- look at time_delta_general
 def generateOffsetDates(date_coord, delta_t):
     offset_dates = []
     for delta in delta_t:
@@ -238,6 +262,8 @@ def generateOffsetDates(date_coord, delta_t):
         offset_dates.append((delta[0], current_offset))
     return offset_dates
 
+# This function sets the longitude coordinate of a dataset to -180 to 180
+# assumes data has a lon coordinate. Also assumes that the lon coordinate passed to this function covers the range 0 to 360
 def standardizeLongitude(data):
     print(divider)
     print('Standardizing Longitude')
@@ -248,6 +274,10 @@ def standardizeLongitude(data):
     print(divider)
     return data
 
+# Used to add yearly values to monthly climatology data
+# takes a xarray dataset, called data, a year to add data for
+# tName_start is the name of the time column as it initially appears in the dataset
+# tName_end is the name of the created time column found in the returned dataset
 def standardizeTime_Month(data, year, tName_start, tName_end):
     print(divider)
     print('Standardizing time')
@@ -262,11 +292,15 @@ def standardizeTime_Month(data, year, tName_start, tName_end):
     print(divider)
     return data
 
-
+# given region_var - an xarray data column, get interpolated data based on interp_dates and return
 def interpData(region_var, interp_dates):
     interp = region_var.interp(time=list(map(str, interp_dates)), method='cubic')
     return interp
 
+# used to retrieve OCS observations from a tab delineated text file found at file_name, which is a path relative to the working
+# directory. Time_column_name is a string indicating which column the datetime can be found.
+# site_name is used to obtain data for a specific site, and start, and end should be years which are used to constrain the obtained
+# data between an inclusive range. Note that this currently only works for the NOAA ocs flask data
 def loadCOSData(file_name, time_column_name, site_name, start, end):
     print(divider)
     print('Load COS data for' + site_name + ' from ' + str(start) + ' to ' + str(end))
@@ -286,13 +320,8 @@ def loadCOSData(file_name, time_column_name, site_name, start, end):
         entry_subset = duplicate_entries.where(duplicate_entries[time_column_name] == date)
         entry_subset.dropna(inplace=True)
         ocs_col = entry_subset['OCS_']
-        print("OCS COL:")
-        print(ocs_col)
-        print("MEAN: ")
+        
         mean = ocs_col.mean()
-        print(str(mean))
-        #print(date)
-        #print(str(mean))
         same_day_avg.append((date, mean))
 
     cos_data = cos_data.drop_duplicates(subset=[time_column_name])
@@ -364,9 +393,9 @@ def loadCOSData(file_name, time_column_name, site_name, start, end):
 
     print('Constraining between ' + str(start) + ' - ' + str(end))
     cos_data = cos_data[(cos_data[time_column_name] >= dt(year=start, month=1, day=1)) & (cos_data[time_column_name] < dt(year=end+1, month=1, day=1))]
-    # strip to COS and return dataframe
-    cos_column_name = 'COS_' + site_name
     
+    # remove other variables and return only ocs observations and date
+    cos_column_name = 'COS_' + site_name
     print('Building Dataframe')
     cos_data = pd.DataFrame({'time':cos_data[time_column_name], cos_column_name : cos_data['OCS_'], 'OCS_stddev' : cos_data['OCS__sd']})
     cos_data = cos_data.reset_index(drop=True)
@@ -385,18 +414,25 @@ def loadCOSData(file_name, time_column_name, site_name, start, end):
     print(divider)
     print(cos_data)
     print(divider)
-    # year_data = cos_data.loc[cos_data['time'].dt.year == 2000]
-    # print(year_data)
-    # print(divider)
-    # print(year_data.mean(numeric_only=True))
 
     print(divider)
     print('Success!')
     print(divider)
-    plt.plot(cos_data['time'], cos_data[cos_column_name])
-    plt.show()
+    fig, ax = plt.subplots(figsize=(16,8))
+    ax.plot(cos_data['time'], cos_data[cos_column_name])
+    ax.set_title(site_name + ' OCS over time')
+    ax.set_xlabel('Time')
+    ax.set_ylabel(site_name + '_OCS')
+
+    fig.savefig(results_path + '/OCS_over_time.png')
+    #plt.show()
     return cos_data
 
+# given climatology data with a monthly granularity, adds interpolated data points for each OCS observation
+# takes file_name, a path relative to the current working directory where the data can be found
+# regions is a regionmask object with all desired regions. Takes a data_frame, to which the interpolated data will be added
+# variable_name is a string representing the desired column to be taken from the climatology data
+# standardize_lon should be set to false if it is not desirable to convert 0 to 360 longitude to -180 to 180 longitude
 def addClimatologyData(file_name, regions, data_frame, variable_name ,standardize_lon=True):
     print(divider)
     print('Adding climatology data for: ' + file_name)
@@ -424,73 +460,21 @@ def addClimatologyData(file_name, regions, data_frame, variable_name ,standardiz
     print(divider)
     return data_frame
 
-def addSSRD(regions, start, end):
-    data_dict = {}
-    for region in regions:
-        data_dict[region.abbrev] = []
-
-    for year in range(start, end + 1):
-        f_name = './SourceData/ssrd/ssrd_' + str(year) + '_monthlymeandiurnalT42.nc'
-        data = xr.open_dataset(f_name).load()
-        dates = []
-        for val in data['month'].values:
-            date = dt(year=year, month=int(val), day=15)
-            dates.append(date)
-        data = data.rename({'month' : 'time'})
-        data = data.assign_coords(time=dates)
-
-        # print('Begin processing' + f_name)
-        # data = xr.open_dataset(f_name).load()
-        # print('Done loading data')
-
-        data_mask = regions.mask(data)
-        for region in regions:
-            region_index = regions.map_keys(region.name)
-            region_data = data.where(data_mask == region_index)
-            data_mean = region_data.mean(dim=('lat', 'lon'))
-            data_dict[region.abbrev].append(data_mean)
-
-    for region in data_dict.keys():
-        data_dict[region] = xr.concat(data_dict[region], dim='time')
-        print(divider)
-        print(region)
-        print(divider)
-        print(data_dict[region])
-        print(divider)
-
-    return data_dict
-
 # ---------------------------------------------------------------------------------------------------------------------
 # build data frame and save as pickle
 # ---------------------------------------------------------------------------------------------------------------------
 
-f_name = "./SourceData/COS-OCEAN-Lennartz-Month_2010.nc"
-ocean_dataset = xr.open_dataset(f_name).load()
-print(ocean_dataset)
-#ocean_dataset.flux[0].plot()
-#plt.show()
-
-f_name = "./SourceData/CDOM/CDOM_a350_2000.nc"
-cdom_set = xr.open_dataset(f_name).load()
-print(cdom_set)
-#cdom_set.CDOM_a350[5].plot()
-#plt.show()
-
-# f_name = "./SourceData/OCS_ocean_2000_2019_lennartzetal.nc"
-# lennartz_set = xr.open_dataset(f_name).load()
-# print(lennartz_set)
-
 my_data_frame = loadCOSData(cos_file, 'yyyymmdd', cos_site, year_start, year_end)
 
 # establish data regions
-# regions = regionmask.defined_regions.ar6.ocean
 regions = buildRegions()
 
 # get timelagged dates
 offset_dates = generateOffsetDates(my_data_frame['time'], time_delta_general)
-
-# regions.plot(label='abbrev')
-# plt.show()
+fig, ax = plt.subplots(figsize=(16,8))
+regions.plot(label='abbrev')
+fig.savefig(results_path + '/regions.png')
+#plt.show()
 
 # add v coordinate wind
 vwnd_dict = getRegionalizedMapData('./SourceData/VWND/vwnd.10m.gauss.', '.nc', 'vwnd', regions, year_start, year_end)
@@ -546,8 +530,6 @@ for region in sst_dict.keys():
     interp = interpData(sst_dict[region].sst, my_data_frame['time'])
     column_name = region + '_sst'
     my_data_frame[column_name] = interp
-    #interp.plot()
-    #plt.show()
 
     for delta in offset_dates:
         column_name = region + '_sst' + delta[0]
