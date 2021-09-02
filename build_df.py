@@ -24,7 +24,7 @@ divider = '---------------------------------------------------------------------
 # COS target, i.e. where our COS observations are obtained from
 # changing the value of cos_site will produce a different pickle file,
 # note that when you run GA2M in the other script, you must modify the cos_site there as well
-cos_site = 'mlo'
+cos_site = 'cgo'
 cos_file = './SourceData/OCS__GCMS_flask.txt'
 
 # path for saving some plots
@@ -310,6 +310,33 @@ def loadCOSData(file_name, time_column_name, site_name, start, end):
     cos_data = pd.read_csv(file_name, delim_whitespace=True, header=1, parse_dates=[time_column_name])
     cos_data = cos_data.loc[cos_data['site'] == site_name]
     
+    #uncomment this section to plot wind direction vs ocs observation for target site
+    '''
+    data_copy = cos_data.copy()
+
+    data_copy = data_copy.loc[data_copy['wind_dir'] != 'nd']
+    data_copy = data_copy.loc[data_copy['wind_dir'].astype(float) >= 0]
+    data_copy = data_copy.loc[data_copy['wind_dir'].astype(float) <= 360]
+    data_copy.reset_index(inplace=True)
+
+    fig, ax = plt.subplots(figsize=(16,8))
+    wind_dir = data_copy['wind_dir'].astype(float)
+    ocs_vals = data_copy['OCS_'].astype(float)
+
+    #ax.errorbar(wind_dir, ocs_vals, yerr=data_copy['OCS__sd'].astype(float), fmt='o')
+    ax.scatter(wind_dir, ocs_vals)
+
+    ax.set_title('Wind direction and OCS for all observations at ' + cos_site )
+    ax.set_xlabel('Wind direction in degrees')
+    ax.set_ylabel('Observed OCS - dry air mole fraction')
+    plt.show()
+
+
+
+
+
+    print(data_copy)
+    '''
     # use average of same day observations
     duplicates = cos_data.duplicated(keep=False, subset=[time_column_name])
     duplicate_entries = cos_data.where(duplicates)
@@ -331,6 +358,7 @@ def loadCOSData(file_name, time_column_name, site_name, start, end):
         cos_data.loc[cos_data[time_column_name] == avg[0], 'OCS_'] = avg[1]
     print("Average replaced:")
     print(cos_data)
+    
 
     # this section may be commented out later, it was used simply to plot the relationship between wind direction and
     # OCS measurement variation for same day observations
